@@ -13,6 +13,18 @@ from .const import ALL_DPS, TUYA_PROTOCOL_VERSION
 _LOGGER = logging.getLogger(__name__)
 
 
+class TuyaDeviceError(Exception):
+    """Base error for tinytuya device communication."""
+
+
+class TuyaKeyError(TuyaDeviceError):
+    """Wrong local key or protocol version (tinytuya error 914)."""
+
+
+class TuyaNetworkError(TuyaDeviceError):
+    """Device unreachable or network timeout (tinytuya error 900)."""
+
+
 class HeatPumpDevice:
     """Async wrapper around tinytuya.Device for pool heat pump control.
 
@@ -73,34 +85,56 @@ class HeatPumpDevice:
     # ─── Sync helpers (run in executor) ──────────────────────────────────
 
     def _poll(self) -> dict[str, Any]:
-        """Blocking poll — called from executor."""
+        """Blocking poll — called from executor.
+
+        Raises on tinytuya errors so the coordinator sees the failure.
+        """
         dev = self._get_device()
         try:
-            # Initial status() gets the "basic" DPs
-            status = dev.status()
-            if "dps" in status:
-                self._dps.update(status["dps"])
-
-            # Request all known DPs (extended range)
-            dev.updatedps(ALL_DPS)
-            status2 = dev.receive()
-            if status2 and "dps" in status2:
-                self._dps.update(status2["dps"])
+            status = self._poll_once(dev)
         except Exception:
             _LOGGER.warning(
                 "Poll failed for %s, reconnecting", self._dev_id, exc_info=True
             )
             self._reconnect()
-            # Retry once after reconnect
-            try:
-                status = dev.status()
-                if "dps" in status:
-                    self._dps.update(status["dps"])
-            except Exception:
-                _LOGGER.error("Retry poll also failed for %s", self._dev_id)
-                raise
+            dev = self._get_device()
+            status = self._poll_once(dev)
+
+        return status
+
+    def _poll_once(self, dev: tinytuya.Device) -> dict[str, Any]:
+        """Single poll attempt. Raises TuyaDeviceError on failure."""
+        status = dev.status()
+        self._check_error(status)
+        if "dps" in status:
+            self._dps.update(status["dps"])
+
+        # Request all known DPs (extended range)
+        dev.updatedps(ALL_DPS)
+        status2 = dev.receive()
+        if status2:
+            self._check_error(status2)
+            if "dps" in status2:
+                self._dps.update(status2["dps"])
+
+        if not self._dps:
+            raise TuyaDeviceError("Device returned no DPs")
 
         return dict(self._dps)
+
+    @staticmethod
+    def _check_error(response: dict[str, Any]) -> None:
+        """Raise TuyaDeviceError if the response contains an error."""
+        if "Error" in response:
+            err_code = response.get("Err", "")
+            err_msg = response.get("Error", "Unknown error")
+            if err_code == "914":
+                raise TuyaKeyError(
+                    f"Wrong local key or protocol version (error {err_code})"
+                )
+            if err_code == "900":
+                raise TuyaNetworkError(f"Network timeout: {err_msg}")
+            raise TuyaDeviceError(f"Device error {err_code}: {err_msg}")
 
     def _set_dp(self, dp_id: str, value: Any) -> None:
         """Set a single DP — blocking."""

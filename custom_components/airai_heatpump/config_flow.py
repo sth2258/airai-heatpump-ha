@@ -172,34 +172,52 @@ class AirAiHeatPumpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             device_id = user_input[CONF_DEVICE_ID]
-            await self.async_set_unique_id(device_id)
-            self._abort_if_unique_id_configured()
+            local_key = user_input[CONF_LOCAL_KEY].strip()
 
-            # Quick validation — try connecting
-            from .device import HeatPumpDevice  # noqa: PLC0415
+            # Accept hex-encoded keys (32 hex chars → 16 byte key)
+            if len(local_key) == 32 and all(c in "0123456789abcdefABCDEF" for c in local_key):
+                local_key = bytes.fromhex(local_key).decode("latin-1")
 
-            device = HeatPumpDevice(
-                device_id=device_id,
-                ip_address=user_input[CONF_DEVICE_IP],
-                local_key=user_input[CONF_LOCAL_KEY],
-            )
-            try:
-                data = await device.async_update()
-                if data:
+            if len(local_key) != 16:
+                errors["local_key"] = "invalid_key_length"
+            else:
+                await self.async_set_unique_id(device_id)
+                self._abort_if_unique_id_configured()
+
+                from .device import (  # noqa: PLC0415
+                    HeatPumpDevice,
+                    TuyaDeviceError,
+                    TuyaKeyError,
+                    TuyaNetworkError,
+                )
+
+                device = HeatPumpDevice(
+                    device_id=device_id,
+                    ip_address=user_input[CONF_DEVICE_IP],
+                    local_key=local_key,
+                )
+                try:
+                    await device.async_update()
                     return self.async_create_entry(
                         title="AIR.ai Heat Pump",
                         data={
                             CONF_DEVICE_ID: device_id,
-                            CONF_LOCAL_KEY: user_input[CONF_LOCAL_KEY],
+                            CONF_LOCAL_KEY: local_key,
                             CONF_DEVICE_IP: user_input[CONF_DEVICE_IP],
                         },
                     )
-                errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Manual connection test failed")
-                errors["base"] = "cannot_connect"
-            finally:
-                device.disconnect()
+                except TuyaKeyError:
+                    errors["local_key"] = "invalid_key"
+                except TuyaNetworkError:
+                    errors["base"] = "device_unreachable"
+                except TuyaDeviceError as ex:
+                    _LOGGER.error("Device error: %s", ex)
+                    errors["base"] = "device_error"
+                except Exception:  # noqa: BLE001
+                    _LOGGER.exception("Manual connection test failed")
+                    errors["base"] = "cannot_connect"
+                finally:
+                    device.disconnect()
 
         return self.async_show_form(
             step_id="manual",
@@ -211,4 +229,7 @@ class AirAiHeatPumpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+            description_placeholders={
+                "key_hint": "16 ASCII chars or 32 hex digits"
+            },
         )

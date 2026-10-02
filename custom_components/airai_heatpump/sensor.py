@@ -59,6 +59,7 @@ from .const import (
     DP_PHASE_C_CURRENT,
     DP_FAULT,
     DP_FW_VERSION,
+    decode_fault_bitmap,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -326,6 +327,26 @@ class HeatPumpSensor(CoordinatorEntity, SensorEntity):
         raw = data.get(self.entity_description.dp_id)
         if raw is None:
             return None
+        # Fault code: show decoded description instead of raw bitmap
+        if self.entity_description.dp_id == DP_FAULT:
+            if not raw:
+                return "OK"
+            faults = decode_fault_bitmap(int(raw))
+            return "; ".join(faults) if faults else f"Fault {raw}"
         if self.entity_description.scale != 1.0:
             return round(float(raw) / self.entity_description.scale, 2)
         return raw
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra attributes for the fault sensor."""
+        if self.entity_description.dp_id != DP_FAULT:
+            return None
+        data = self.coordinator.data or {}
+        raw = data.get(DP_FAULT)
+        if raw is None:
+            return None
+        return {
+            "raw_bitmap": int(raw),
+            "active_faults": decode_fault_bitmap(int(raw)),
+        }

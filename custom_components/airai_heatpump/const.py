@@ -94,3 +94,49 @@ ALL_DPS = [
     1, 2, 4, 5, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 33,
     35, 37, 40, 41, 102, 103, 104, 105, 106, 109, 110, 111, 112,
 ]
+
+# ─── Fault code bitmap descriptions (DP 15, 30-bit bitmap) ────────────────────
+# Bit position → fault name. Known codes from device observation and OEM docs.
+FAULT_CODES: dict[int, str] = {
+    0: "High-pressure protection",
+    1: "Low-pressure protection",
+    2: "Compressor overload",
+    3: "Water flow switch fault",
+    4: "Discharge temp too high",
+    5: "Ambient temp sensor fault",
+    6: "Coil temp sensor fault",
+    7: "Discharge temp sensor fault",
+    8: "Suction temp sensor fault",
+    9: "Inlet water temp sensor fault",
+    10: "Outlet water temp sensor fault",
+    11: "Communication fault",
+    12: "EEPROM fault",
+    13: "Phase loss / power fault",
+    14: "Fan motor fault",
+    15: "Incoiler temp sensor fault",
+    16: "EEV fault",
+    17: "Anti-freeze protection",
+    18: "Phase sequence fault",
+    19: "Compressor startup failure",
+    20: "Voltage out of range",
+    21: "Current overload",
+    22: "Inverter module fault",
+    23: "PFC fault",
+    24: "DC bus voltage fault",
+    25: "IPM overheat",
+    26: "Compressor demagnetization",
+    27: "Compressor stall",
+    28: "Reserved",
+    29: "Reserved",
+}
+
+
+def decode_fault_bitmap(raw: int) -> list[str]:
+    """Decode a fault bitmap into a list of active fault descriptions."""
+    if not raw:
+        return []
+    faults = []
+    for bit, name in FAULT_CODES.items():
+        if raw & (1 << bit):
+            faults.append(name)
+    return faults

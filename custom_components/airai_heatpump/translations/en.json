@@ -28,10 +28,10 @@
       },
       "manual": {
         "title": "Manual Device Setup",
-        "description": "Enter the device details directly. Get these from the AIR.ai app or by running `python3 -m tinytuya scan`.",
+        "description": "Enter the device details directly. Local Key accepts {key_hint}. Keys with special characters (backticks, quotes) should be entered as hex.",
         "data": {
           "device_id": "Device ID",
-          "local_key": "Local Key",
+          "local_key": "Local Key (16 chars or 32 hex digits)",
           "device_ip": "Device IP Address"
         }
       }
@@ -40,6 +40,10 @@
       "invalid_auth": "Invalid email or password",
       "cannot_connect": "Could not connect — check device IP and network",
       "no_devices": "No devices found on this account",
+      "invalid_key": "Wrong local key or protocol version — verify the key matches this device",
+      "invalid_key_length": "Local key must be 16 ASCII characters or 32 hex digits",
+      "device_unreachable": "Device not reachable — check IP address, ensure device is on the same network",
+      "device_error": "Device responded with an error — check logs for details",
       "unknown": "An unexpected error occurred"
     },
     "abort": {
