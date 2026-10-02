@@ -7,7 +7,9 @@ TURBRO / AIR.ai pool heat pumps over Tuya protocol v3.5.
 from __future__ import annotations
 
 import logging
+import shutil
 from datetime import timedelta
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -27,9 +29,28 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["climate", "sensor", "binary_sensor"]
 
 
+_BRAND_FILES = ("icon.png", "icon@2x.png", "logo.png", "logo@2x.png")
+
+
+def _install_brand_icons(hass: HomeAssistant) -> None:
+    """Copy integration icons into the HA brands cache so the UI displays them."""
+    src_dir = Path(__file__).parent
+    dest_dir = Path(hass.config.path(".cache", "brands", "integrations", DOMAIN))
+    try:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        for name in _BRAND_FILES:
+            src = src_dir / name
+            dest = dest_dir / name
+            if src.exists() and not dest.exists():
+                shutil.copy2(src, dest)
+    except OSError:
+        _LOGGER.debug("Could not install brand icons to %s", dest_dir)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up AIR.ai Heat Pump from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+    _install_brand_icons(hass)
 
     device = HeatPumpDevice(
         device_id=entry.data[CONF_DEVICE_ID],
