@@ -1,0 +1,50 @@
+{
+  "title": "AIR.ai Pool Heat Pump",
+  "config": {
+    "step": {
+      "user": {
+        "title": "AIR.ai Heat Pump Setup",
+        "menu_options": {
+          "cloud_login": "Log in with AIR.ai account (automatic)",
+          "manual": "Enter device details manually"
+        }
+      },
+      "cloud_login": {
+        "title": "AIR.ai Cloud Login",
+        "description": "Enter your AIR.ai app credentials. The integration will discover your heat pump(s) and fetch local keys automatically.",
+        "data": {
+          "email": "Email",
+          "password": "Password",
+          "region": "Region",
+          "device_ip": "Device IP address (optional, for local control)"
+        }
+      },
+      "select_device": {
+        "title": "Select Device",
+        "description": "Multiple devices found on your account. Select the heat pump to add.",
+        "data": {
+          "device_id": "Device"
+        }
+      },
+      "manual": {
+        "title": "Manual Device Setup",
+        "description": "Enter the device details directly. Get these from the AIR.ai app or by running `python3 -m tinytuya scan`.",
+        "data": {
+          "device_id": "Device ID",
+          "local_key": "Local Key",
+          "device_ip": "Device IP Address"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password",
+      "cannot_connect": "Could not connect — check device IP and network",
+      "no_devices": "No devices found on this account",
+      "unknown": "An unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This device is already configured",
+      "device_not_found": "Selected device not found"
+    }
+  }
+}

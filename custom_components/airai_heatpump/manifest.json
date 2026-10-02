@@ -1,0 +1,11 @@
+{
+  "domain": "airai_heatpump",
+  "name": "AIR.ai Pool Heat Pump",
+  "codeowners": ["@shaber"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/shaber/airai-heatpump-ha",
+  "iot_class": "local_polling",
+  "requirements": ["tinytuya>=1.13.0", "tuya-mobile>=0.4.0"],
+  "version": "1.0.0"
+}
